@@ -30,10 +30,13 @@ def sort_table(data, order_by):
             instructions.append((o, False,))
     data.sort(cmp=_cmp)
 
+
+
 class TableOptions(object):
     def __init__(self, options=None):
-        super(TableOptions, self).__init__()
         self.sortable = getattr(options, 'sortable', None)
+
+
 
 class DeclarativeColumnsMetaclass(type):
     """
@@ -127,6 +130,7 @@ class OrderByTuple(tuple, StrAndUnicode):
                 if o == '-'+name:
                     return True
             return False
+
         def is_straight(self, name):
             """The opposite of is_reversed."""
             for o in self:
@@ -188,6 +192,8 @@ class OrderByTuple(tuple, StrAndUnicode):
 class DefaultOptions(object):
     IGNORE_INVALID_OPTIONS = True
 options = DefaultOptions()
+
+
 
 class BaseTable(object):
     def __init__(self, data, order_by=None):
@@ -361,9 +367,6 @@ class BaseTable(object):
     columns = property(lambda s: s._columns)
     rows = property(lambda s: s._rows)
 
-    def as_html(self):
-        pass
-
     def update(self):
         """Update the table based on it's current options.
 
@@ -384,11 +387,13 @@ class BaseTable(object):
             raise Http404(str(e))
 
 
+
 class Table(BaseTable):
     "A collection of columns, plus their associated data rows."
     # This is a separate class from BaseTable in order to abstract the way
     # self.columns is specified.
     __metaclass__ = DeclarativeColumnsMetaclass
+
 
 
 class Columns(object):
@@ -424,6 +429,7 @@ class Columns(object):
             else:
                 new_columns[exposed_name] = BoundColumn(self.table, column, decl_name)
         self._columns = new_columns
+
 
     def all(self):
         """Iterate through all columns, regardless of visiblity (as
@@ -484,6 +490,7 @@ class Columns(object):
         return self._columns[name]
 
 
+
 class BoundColumn(StrAndUnicode):
     """'Runtime' version of ``Column`` that is bound to a table instance,
     and thus knows about the table's data.
@@ -496,10 +503,19 @@ class BoundColumn(StrAndUnicode):
     """
     def __init__(self, table, column, name):
         self.table = table
+        self._filter = table.filter
         self.column = column
         self.declared_name = name
         # expose some attributes of the column more directly
         self.visible = column.visible
+
+    def _get_filter_field(self):
+        if not self._filter:
+            raise AttributeError("Filter class was not specified in Meta class.")
+        if self.declared_name in self._filter.form.fields:
+            return self._filter.form[self.declared_name]
+        return u''
+    filter_field = property(_get_filter_field)
 
     def _get_sortable(self):
         if self.column.sortable is not None:
@@ -544,8 +560,7 @@ class BoundColumn(StrAndUnicode):
     def __unicode__(self):
         return capfirst(self.column.verbose_name or self.name.replace('_', ' '))
 
-    def as_html(self):
-        pass
+
 
 class Rows(object):
     """Container for spawning BoundRows.
@@ -588,6 +603,8 @@ class Rows(object):
             return self.row_klass(self.table, self.table.data[key])
         else:
             raise TypeError('Key must be a slice or integer.')
+
+
 
 class BoundRow(object):
     """Represents a single row of data, bound to a table.
