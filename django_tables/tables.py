@@ -196,7 +196,7 @@ options = DefaultOptions()
 
 
 class BaseTable(object):
-    def __init__(self, data, order_by=None):
+    def __init__(self, data, order_by=None, visible_columns=(), column_order=()):
         """Create a new table instance with the iterable ``data``.
 
         If ``order_by`` is specified, the data will be sorted accordingly.
@@ -223,6 +223,11 @@ class BaseTable(object):
         # copy is made available in a ``fields`` attribute. See the
         # ``Table`` class docstring for more information.
         self.base_columns = copy.deepcopy(type(self).base_columns)
+        self.base_columns.keyOrder = column_order + self.base_columns.keys()
+        for fname in self.base_columns:
+            if not fname in visible_columns:
+                self.base_columns[fname].visible = False
+
 
     def _build_snapshot(self):
         """Rebuilds the table whenever it's options change.

@@ -93,6 +93,9 @@ class BaseModelTable(BaseTable):
             if queryset:
                 self.queryset = queryset
             else: # we assumes that Meta.model param was specified
+                if not self._meta.model:
+                    raise ValueError("You have to define 'Meta.model' option if you "
+                                     "if you're using ModelTable.")
                 self.queryset = self._meta.model._dafault_manager.all()
 
         super(BaseModelTable, self).__init__(self.queryset, **kwargs)
