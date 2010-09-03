@@ -228,10 +228,10 @@ class BaseTable(object):
         # ``Table`` class docstring for more information.
         
         self.base_columns = copy.deepcopy(self.base_columns)
-        
+
         keys_order = list(column_order) + list(self.base_columns.keys())
         self.base_columns.keyOrder = unique_list(keys_order)
-        
+
         if visible_columns: # set visibility only if visible_columns are specified
             for fname in self.base_columns.keys():
                 if not fname in visible_columns:
