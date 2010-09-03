@@ -223,7 +223,7 @@ class BaseTable(object):
         # copy is made available in a ``fields`` attribute. See the
         # ``Table`` class docstring for more information.
         self.base_columns = copy.deepcopy(type(self).base_columns)
-        self.base_columns.keyOrder = column_order + self.base_columns.keys()
+        self.base_columns.keyOrder = list(column_order) + list(self.base_columns.keys())
         for fname in self.base_columns:
             if not fname in visible_columns:
                 self.base_columns[fname].visible = False
