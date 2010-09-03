@@ -508,7 +508,7 @@ class BoundColumn(StrAndUnicode):
     """
     def __init__(self, table, column, name):
         self.table = table
-        self._filter = table.filter
+        self._filter = getattr(table, 'filter', None)
         self.column = column
         self.declared_name = name
         # expose some attributes of the column more directly
@@ -516,7 +516,8 @@ class BoundColumn(StrAndUnicode):
 
     def _get_filter_field(self):
         if not self._filter:
-            raise AttributeError("Filter class was not specified in Meta class.")
+            raise AttributeError("Filter class was not specified in Meta class. "
+                                 "'filter_class' can be used only with ModelTables")
         if self.declared_name in self._filter.form.fields:
             return self._filter.form[self.declared_name]
         return u''
