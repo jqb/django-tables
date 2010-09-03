@@ -5,8 +5,11 @@ from django.utils.datastructures import SortedDict
 from django.utils.encoding import StrAndUnicode
 from django.utils.text import capfirst
 from columns import Column
+from utils import unique_list
+
 
 __all__ = ('BaseTable', 'Table', 'options')
+
 
 def sort_table(data, order_by):
     """Sort a list of dicts according to the fieldnames in the
@@ -34,6 +37,7 @@ def sort_table(data, order_by):
 
 class TableOptions(object):
     def __init__(self, options=None):
+        super(TableOptions, self).__init__()
         self.sortable = getattr(options, 'sortable', None)
 
 
@@ -222,11 +226,16 @@ class BaseTable(object):
         # definition. Note that this is different from forms, where the
         # copy is made available in a ``fields`` attribute. See the
         # ``Table`` class docstring for more information.
-        self.base_columns = copy.deepcopy(type(self).base_columns)
-        self.base_columns.keyOrder = list(column_order) + list(self.base_columns.keys())
-        for fname in self.base_columns:
-            if not fname in visible_columns:
-                self.base_columns[fname].visible = False
+        
+        self.base_columns = copy.deepcopy(self.base_columns)
+        
+        keys_order = list(column_order) + list(self.base_columns.keys())
+        self.base_columns.keyOrder = unique_list(keys_order)
+        
+        if visible_columns: # set visibility only if visible_columns are specified
+            for fname in self.base_columns.keys():
+                if not fname in visible_columns:
+                    self.base_columns[fname].visible = False
 
 
     def _build_snapshot(self):

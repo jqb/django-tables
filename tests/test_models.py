@@ -50,6 +50,35 @@ def setup_module(module):
     Country(name="France", tld="fr", population=64, system="republic").save()
     Country(name="Netherlands", tld="nl", population=16, system="monarchy", capital=amsterdam).save()
 
+
+def test_visibility():
+    """
+    Test visible_columns option
+    """
+
+    class CountryTable(tables.ModelTable):
+        class Meta:
+            model = Country
+
+    table = CountryTable(visible_columns=['name', 'population'])
+    assert map(lambda c: c.name, table.columns) == ['name', 'population']
+
+
+
+def test_column_order():
+    """
+    Test column_order option
+    """
+
+    class CountryTable(tables.ModelTable):
+        class Meta:
+            model = Country
+
+    table = CountryTable(column_order=['null', 'null2'], visible_columns=['name', 'null', 'null2'])
+    assert map(lambda c: c.name, table.columns) == ['null', 'null2', 'name']
+
+
+
 def test_declaration():
     """Test declaration, declared columns and default model field columns.
     """

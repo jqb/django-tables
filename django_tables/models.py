@@ -79,7 +79,7 @@ class BaseModelTable(BaseTable):
     just don't any data at all, the model the table is based on will
     provide it.
     """
-    def __init__(self, queryset=None, filter_params=None, **kwargs):
+    def __init__(self, data=None, filter_params=None, **kwargs):
         # if the filter_class is specified then we want to
         # use query that 'filter' instance will prepare 
         if self._meta.filter_class:
@@ -90,13 +90,15 @@ class BaseModelTable(BaseTable):
             # is not specified we'll queryset from the model
             self.filter = None
 
-            if queryset:
-                self.queryset = queryset
-            else: # we assumes that Meta.model param was specified
-                if not self._meta.model:
+            if data == None:
+                if self._meta.model == None:
                     raise ValueError("You have to define 'Meta.model' option if you "
                                      "if you're using ModelTable.")
-                self.queryset = self._meta.model._dafault_manager.all()
+                self.queryset = self._meta.model._default_manager.all()
+            elif hasattr(data, '_default_manager'): # saves us db.models import
+                self.queryset = data._default_manager.all()
+            else:
+                self.queryset = data
 
         super(BaseModelTable, self).__init__(self.queryset, **kwargs)
         self._rows = ModelRows(self)
