@@ -530,7 +530,7 @@ class BoundColumn(StrAndUnicode):
         if self.declared_name in self._filter.form.fields:
             return self._filter.form[self.declared_name]
         return u''
-    filter_field = property(_get_filter_field)
+    filter = property(_get_filter_field)
 
     def _get_sortable(self):
         if self.column.sortable is not None:
