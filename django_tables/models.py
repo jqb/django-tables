@@ -12,6 +12,11 @@ class ModelTableOptions(TableOptions):
         self.columns = getattr(options, 'columns', None)
         self.exclude = getattr(options, 'exclude', None)
 
+        # this is support for django_filter project
+        self.filter_class = getattr(options, 'filter_class', None)
+
+
+
 def columns_for_model(model, columns=None, exclude=None):
     """
     Returns a ``SortedDict`` containing form columns for the given model.
@@ -35,6 +40,7 @@ def columns_for_model(model, columns=None, exclude=None):
             field_list.append((f.name, column))
     return SortedDict(field_list)
 
+
 class ModelTableMetaclass(DeclarativeColumnsMetaclass):
     def __new__(cls, name, bases, attrs):
         # Let the default form meta class get the declared columns; store
@@ -54,6 +60,17 @@ class ModelTableMetaclass(DeclarativeColumnsMetaclass):
             self.base_columns = columns
         return self
 
+
+
+def get_queryset_or_none(queryset_or_model):
+    if hasattr(queryset_or_model, '_default_manager'): # saves us db.models import
+        return queryset_or_model._default_manager.all()
+    if queryset_or_model is not None:
+        return queryset_or_model.all()
+    return None
+
+
+
 class BaseModelTable(BaseTable):
     """Table that is based on a model.
 
@@ -72,18 +89,28 @@ class BaseModelTable(BaseTable):
     just don't any data at all, the model the table is based on will
     provide it.
     """
-    def __init__(self, data=None, *args, **kwargs):
-        if data == None:
-            if self._meta.model is None:
-                raise ValueError('Table without a model association needs '
-                    'to be initialized with data')
-            self.queryset = self._meta.model._default_manager.all()
-        elif hasattr(data, '_default_manager'): # saves us db.models import
-            self.queryset = data._default_manager.all()
+    def __init__(self, data=None, filter_params=None, **kwargs):
+        queryset_or_model = data # !!!!!
+        # if the filter_class is specified then we want to
+        # use query that 'filter' instance will prepare 
+        if self._meta.filter_class:
+            qs = get_queryset_or_none(queryset_or_model)
+            self.filter = self._meta.filter_class(filter_params, queryset=qs)
+            self.queryset = self.filter.qs
         else:
-            self.queryset = data
+            # if filter_class is not availaible and the 'queryset' param
+            # is not specified we'll queryset from the model
+            self.filter = None
 
-        super(BaseModelTable, self).__init__(self.queryset, *args, **kwargs)
+            if queryset_or_model == None:
+                if self._meta.model == None:
+                    raise ValueError("You have to define 'Meta.model' option if you "
+                                     "if you're using ModelTable.")
+                self.queryset = self._meta.model._default_manager.all()
+            else:
+                self.queryset = get_queryset_or_none(queryset_or_model)
+
+        super(BaseModelTable, self).__init__(self.queryset, **kwargs)
         self._rows = ModelRows(self)
 
     def _validate_column_name(self, name, purpose):
@@ -151,8 +178,12 @@ class BaseModelTable(BaseTable):
         for row in self.data:
             yield BoundModelRow(self, row)
 
+
+
 class ModelTable(BaseModelTable):
     __metaclass__ = ModelTableMetaclass
+
+
 
 class ModelRows(Rows):
     def __init__(self, *args, **kwargs):
@@ -173,6 +204,8 @@ class ModelRows(Rows):
 
     # for compatibility with QuerySetPaginator
     count = __len__
+
+
 
 class BoundModelRow(BoundRow):
     """Special version of the BoundRow class that can handle model instances

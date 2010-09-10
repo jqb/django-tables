@@ -5,8 +5,11 @@ from django.utils.datastructures import SortedDict
 from django.utils.encoding import StrAndUnicode
 from django.utils.text import capfirst
 from columns import Column
+from utils import unique_list
+
 
 __all__ = ('BaseTable', 'Table', 'options')
+
 
 def sort_table(data, order_by):
     """Sort a list of dicts according to the fieldnames in the
@@ -30,10 +33,15 @@ def sort_table(data, order_by):
             instructions.append((o, False,))
     data.sort(cmp=_cmp)
 
+
+
 class TableOptions(object):
     def __init__(self, options=None):
         super(TableOptions, self).__init__()
         self.sortable = getattr(options, 'sortable', None)
+        self.always_visible_cols = getattr(options, 'always_visible_cols', [])
+
+
 
 class DeclarativeColumnsMetaclass(type):
     """
@@ -89,8 +97,8 @@ class DeclarativeColumnsMetaclass(type):
         if not 'base_columns' in attrs:
             attrs['base_columns'] = SortedDict()
         attrs['base_columns'].update(SortedDict(columns))
-
         attrs['_meta'] = TableOptions(attrs.get('Meta', None))
+        attrs['always_visible_cols'] = list(attrs['_meta'].always_visible_cols)
         return type.__new__(cls, name, bases, attrs)
 
 def rmprefix(s):
@@ -127,6 +135,7 @@ class OrderByTuple(tuple, StrAndUnicode):
                 if o == '-'+name:
                     return True
             return False
+
         def is_straight(self, name):
             """The opposite of is_reversed."""
             for o in self:
@@ -189,8 +198,10 @@ class DefaultOptions(object):
     IGNORE_INVALID_OPTIONS = True
 options = DefaultOptions()
 
+
+
 class BaseTable(object):
-    def __init__(self, data, order_by=None):
+    def __init__(self, data, order_by=None, visible_columns=(), column_order=()):
         """Create a new table instance with the iterable ``data``.
 
         If ``order_by`` is specified, the data will be sorted accordingly.
@@ -216,7 +227,22 @@ class BaseTable(object):
         # definition. Note that this is different from forms, where the
         # copy is made available in a ``fields`` attribute. See the
         # ``Table`` class docstring for more information.
-        self.base_columns = copy.deepcopy(type(self).base_columns)
+
+        self.base_columns = copy.deepcopy(self.base_columns)
+
+        keys_order = list(column_order) + list(self.base_columns.keys())
+        self.base_columns.keyOrder = unique_list(keys_order)
+
+        if visible_columns: # set visibility only if visible_columns are specified
+            for fname in self.base_columns.keys():
+                if not fname in visible_columns:
+                    self.base_columns[fname].visible = False
+
+        if self.always_visible_cols:
+            for fname in self.base_columns.keys():
+                if fname in self.always_visible_cols:
+                    self.base_columns[fname].visible = True
+
 
     def _build_snapshot(self):
         """Rebuilds the table whenever it's options change.
@@ -361,9 +387,6 @@ class BaseTable(object):
     columns = property(lambda s: s._columns)
     rows = property(lambda s: s._rows)
 
-    def as_html(self):
-        pass
-
     def update(self):
         """Update the table based on it's current options.
 
@@ -384,11 +407,13 @@ class BaseTable(object):
             raise Http404(str(e))
 
 
+
 class Table(BaseTable):
     "A collection of columns, plus their associated data rows."
     # This is a separate class from BaseTable in order to abstract the way
     # self.columns is specified.
     __metaclass__ = DeclarativeColumnsMetaclass
+
 
 
 class Columns(object):
@@ -424,6 +449,7 @@ class Columns(object):
             else:
                 new_columns[exposed_name] = BoundColumn(self.table, column, decl_name)
         self._columns = new_columns
+
 
     def all(self):
         """Iterate through all columns, regardless of visiblity (as
@@ -484,6 +510,7 @@ class Columns(object):
         return self._columns[name]
 
 
+
 class BoundColumn(StrAndUnicode):
     """'Runtime' version of ``Column`` that is bound to a table instance,
     and thus knows about the table's data.
@@ -496,10 +523,20 @@ class BoundColumn(StrAndUnicode):
     """
     def __init__(self, table, column, name):
         self.table = table
+        self._filter = getattr(table, 'filter', None)
         self.column = column
         self.declared_name = name
         # expose some attributes of the column more directly
         self.visible = column.visible
+
+    def _get_filter_field(self):
+        if not self._filter:
+            raise AttributeError("Filter class was not specified in Meta class. "
+                                 "'filter_class' can be used only with ModelTables")
+        if self.declared_name in self._filter.form.fields:
+            return self._filter.form[self.declared_name]
+        return u''
+    filter = property(_get_filter_field)
 
     def _get_sortable(self):
         if self.column.sortable is not None:
@@ -544,8 +581,7 @@ class BoundColumn(StrAndUnicode):
     def __unicode__(self):
         return capfirst(self.column.verbose_name or self.name.replace('_', ' '))
 
-    def as_html(self):
-        pass
+
 
 class Rows(object):
     """Container for spawning BoundRows.
@@ -588,6 +624,8 @@ class Rows(object):
             return self.row_klass(self.table, self.table.data[key])
         else:
             raise TypeError('Key must be a slice or integer.')
+
+
 
 class BoundRow(object):
     """Represents a single row of data, bound to a table.
