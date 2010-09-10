@@ -43,6 +43,8 @@ class TableOptions(object):
 
 
 
+
+
 class DeclarativeColumnsMetaclass(type):
     """
     Metaclass that converts Column attributes to a dictionary called
@@ -227,7 +229,6 @@ class BaseTable(object):
         # definition. Note that this is different from forms, where the
         # copy is made available in a ``fields`` attribute. See the
         # ``Table`` class docstring for more information.
-
         self.base_columns = copy.deepcopy(self.base_columns)
 
         keys_order = list(column_order) + list(self.base_columns.keys())
@@ -242,7 +243,6 @@ class BaseTable(object):
             for fname in self.base_columns.keys():
                 if fname in self.always_visible_cols:
                     self.base_columns[fname].visible = True
-
 
     def _build_snapshot(self):
         """Rebuilds the table whenever it's options change.

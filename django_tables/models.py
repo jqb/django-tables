@@ -96,6 +96,10 @@ class BaseModelTable(BaseTable):
         if self._meta.filter_class:
             qs = get_queryset_or_none(queryset_or_model)
             self.filter = self._meta.filter_class(filter_params, queryset=qs)
+        # if the filter_class is specified then we want to
+        # use query that 'filter' instance will prepare 
+        if self._meta.filter_class:
+            self.filter = self._meta.filter_class(filter_params)
             self.queryset = self.filter.qs
         else:
             # if filter_class is not availaible and the 'queryset' param
