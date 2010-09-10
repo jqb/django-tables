@@ -43,8 +43,6 @@ class TableOptions(object):
 
 
 
-
-
 class DeclarativeColumnsMetaclass(type):
     """
     Metaclass that converts Column attributes to a dictionary called
